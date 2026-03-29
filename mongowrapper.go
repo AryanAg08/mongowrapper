@@ -40,7 +40,7 @@ type Query struct {
 func Connect(ctx context.Context, uri string, opts ...*options.ClientOptions) (*Client, error) {
 	clientOpts := options.Client().ApplyURI(uri)
 	for _, opt := range opts {
-		clientOpts = clientOpts.SetAppName(opt.AppName)
+		clientOpts = clientOpts.SetAppName(*opt.AppName)
 		if opt.MaxPoolSize != nil {
 			clientOpts = clientOpts.SetMaxPoolSize(*opt.MaxPoolSize)
 		}
@@ -268,12 +268,12 @@ func (c *Collection) EstimateCount(ctx context.Context, count *int64) error {
 
 // Pipe represents an aggregation pipeline query
 type Pipe struct {
-	collection    *mongo.Collection
-	ctx           context.Context
-	pipeline      interface{}
-	allowDiskUse  bool
-	batchSize     *int32
-	maxTime       *time.Duration
+	collection   *mongo.Collection
+	ctx          context.Context
+	pipeline     interface{}
+	allowDiskUse bool
+	batchSize    *int32
+	maxTime      *time.Duration
 }
 
 // Pipe creates a new aggregation pipeline
