@@ -39,14 +39,20 @@ type Query struct {
 // Connect creates a new MongoDB client connection
 func Connect(ctx context.Context, uri string, opts ...*options.ClientOptions) (*Client, error) {
 	clientOpts := options.Client().ApplyURI(uri)
+
 	for _, opt := range opts {
-		clientOpts = clientOpts.SetAppName(*opt.AppName)
+		if opt.AppName != nil {
+			clientOpts = clientOpts.SetAppName(*opt.AppName)
+		}
+
 		if opt.MaxPoolSize != nil {
 			clientOpts = clientOpts.SetMaxPoolSize(*opt.MaxPoolSize)
 		}
+
 		if opt.MinPoolSize != nil {
 			clientOpts = clientOpts.SetMinPoolSize(*opt.MinPoolSize)
 		}
+
 		if opt.MaxConnIdleTime != nil {
 			clientOpts = clientOpts.SetMaxConnIdleTime(*opt.MaxConnIdleTime)
 		}
@@ -57,7 +63,6 @@ func Connect(ctx context.Context, uri string, opts ...*options.ClientOptions) (*
 		return nil, err
 	}
 
-	// Ping the database to verify connection
 	if err := client.Ping(ctx, readpref.Primary()); err != nil {
 		return nil, err
 	}
