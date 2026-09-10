@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -38,7 +39,11 @@ type Query struct {
 
 // Connect creates a new MongoDB client connection
 func Connect(ctx context.Context, uri string, opts ...*options.ClientOptions) (*Client, error) {
-	clientOpts := options.Client().ApplyURI(uri)
+	registerMetrics(prometheus.DefaultRegisterer)
+
+	clientOpts := options.Client().ApplyURI(uri).
+		SetMonitor(commandMonitor()).
+		SetPoolMonitor(poolMonitor())
 
 	for _, opt := range opts {
 		if opt.AppName != nil {

@@ -294,6 +294,26 @@ if err != nil {
 }
 ```
 
+## Metrics
+
+Every `Connect` call automatically instruments the underlying MongoDB driver with
+Prometheus collectors, registered once against `prometheus.DefaultRegisterer`:
+
+- `mongowrapper_commands_total{command,status}` — commands executed, by command name and outcome
+- `mongowrapper_command_duration_seconds{command}` — command latency histogram
+- `mongowrapper_pool_connections_open` — open connections in the pool
+- `mongowrapper_pool_connections_in_use` — connections currently checked out
+- `mongowrapper_pool_events_total{type}` — connection pool events, by type
+
+Since they register on the default registry, they show up automatically in any
+app that already exposes Prometheus's default handler:
+
+```go
+import "github.com/prometheus/client_golang/prometheus/promhttp"
+
+http.Handle("/metrics", promhttp.Handler())
+```
+
 ## Best Practices
 
 1. **Always use context**: Pass context to control timeouts and cancellations
