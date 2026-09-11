@@ -299,11 +299,34 @@ if err != nil {
 Every `Connect` call automatically instruments the underlying MongoDB driver with
 Prometheus collectors, registered once against `prometheus.DefaultRegisterer`:
 
-- `mongowrapper_commands_total{command,status}` — commands executed, by command name and outcome
-- `mongowrapper_command_duration_seconds{command}` — command latency histogram
+- `mongowrapper_commands_total{command,database,collection,status}` — commands executed, by command name, target and outcome
+- `mongowrapper_command_duration_seconds{command,database,collection}` — command latency histogram
 - `mongowrapper_pool_connections_open` — open connections in the pool
 - `mongowrapper_pool_connections_in_use` — connections currently checked out
 - `mongowrapper_pool_events_total{type}` — connection pool events, by type
+
+The `database` and `collection` labels make it possible to ask which collection
+is slow, rather than only which command is slow:
+
+```promql
+# Busiest collections, across every database
+topk(10, sum by (database, collection) (rate(mongowrapper_commands_total[5m])))
+
+# p95 latency for one collection
+histogram_quantile(0.95, sum by (le) (
+  rate(mongowrapper_command_duration_seconds_bucket{database="appdb", collection="users"}[5m])
+))
+```
+
+Commands that target no collection — `ping`, `hello`, `endSessions`, the
+authentication handshake — are labelled `collection="-"` (`UnknownCollection`).
+Filter them out with `collection!="-"` when ranking collections by load,
+otherwise connection churn outranks real queries on a quiet service.
+
+The collection name is only present on the driver's *started* event while the
+duration arrives on the *finished* one, so the two are correlated on `RequestID`
+through a map bounded at 4096 entries. If a finished event were ever dropped,
+the cost is a missing collection label rather than unbounded memory.
 
 Since they register on the default registry, they show up automatically in any
 app that already exposes Prometheus's default handler:
