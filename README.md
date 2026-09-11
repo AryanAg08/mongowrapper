@@ -337,6 +337,47 @@ import "github.com/prometheus/client_golang/prometheus/promhttp"
 http.Handle("/metrics", promhttp.Handler())
 ```
 
+### Grafana dashboard
+
+[`dashboards/grafana-mongowrapper.json`](dashboards/grafana-mongowrapper.json)
+is a ready-made dashboard for these metrics. Import it with
+*Dashboards → New → Import → Upload JSON file*, or provision it from a ConfigMap
+if you run the Grafana sidecar.
+
+23 panels across five rows:
+
+| Row | Answers |
+|---|---|
+| Summary | operation rate, failure rate, p95, pool occupancy |
+| Operations | rate by command, a table of every command, rate by database, failure ratio |
+| Collections | busiest collections across all databases, a sortable table, slowest by p95, database time by collection, failures, read/write mix |
+| Latency | quantiles by command and a bucket heatmap |
+| Connection pool | open vs in use, checkout rate and failures, connection churn, all pool event types |
+| Connectivity | `ping` success rate and latency — reachability, isolated from query cost |
+
+It depends only on what this package exports, so it works for any application
+that calls `Connect()`. Four variables — Job, Instance, Database, Operation —
+are populated from the metrics themselves, and the datasource is a variable too,
+so there is nothing to edit after importing.
+
+The **Collections** row needs v1.4.0 or later. On an older version those panels
+render but collapse to a single unlabelled series.
+
+Two things it deliberately does:
+
+- **Excludes `ping`** from the throughput and cost panels. It is the driver's
+  health check, not your query load, and on an idle application it outnumbers
+  real queries. It keeps its own Connectivity row, where its failure rate is the
+  cleanest available signal that the database is unreachable.
+- **Requires `collection` to be present**, not merely `!= "-"`. A missing label
+  is an empty string, so a process still on < v1.4.0 would otherwise appear as
+  one nameless aggregate that can outrank every real collection.
+
+What it cannot show: replication lag, WiredTiger cache pressure, storage size or
+document counts. Those are server-side, come from `dbStats`/`collStats`, and
+need a `mongodb_exporter` alongside. This measures operations *against*
+collections, not the data sitting in them.
+
 ## Best Practices
 
 1. **Always use context**: Pass context to control timeouts and cancellations
