@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -37,13 +38,25 @@ type Query struct {
 	hint       interface{}
 }
 
-// Connect creates a new MongoDB client connection
+// Connect creates a new MongoDB client connection. A Monitor or PoolMonitor in opts (e.g.
+// otelmongo.NewMonitor() for tracing) runs alongside the wrapper's metrics monitors.
 func Connect(ctx context.Context, uri string, opts ...*options.ClientOptions) (*Client, error) {
 	registerMetrics(prometheus.DefaultRegisterer)
 
+	commandMonitors := []*event.CommandMonitor{commandMonitor()}
+	poolMonitors := []*event.PoolMonitor{poolMonitor()}
+	for _, opt := range opts {
+		if opt.Monitor != nil {
+			commandMonitors = append(commandMonitors, opt.Monitor)
+		}
+		if opt.PoolMonitor != nil {
+			poolMonitors = append(poolMonitors, opt.PoolMonitor)
+		}
+	}
+
 	clientOpts := options.Client().ApplyURI(uri).
-		SetMonitor(commandMonitor()).
-		SetPoolMonitor(poolMonitor())
+		SetMonitor(combineCommandMonitors(commandMonitors)).
+		SetPoolMonitor(combinePoolMonitors(poolMonitors))
 
 	for _, opt := range opts {
 		if opt.AppName != nil {

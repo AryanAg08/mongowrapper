@@ -337,6 +337,18 @@ import "github.com/prometheus/client_golang/prometheus/promhttp"
 http.Handle("/metrics", promhttp.Handler())
 ```
 
+## Tracing and your own monitors
+
+A `Monitor` or `PoolMonitor` set on the options passed to `Connect` runs alongside
+the metrics monitors, after them, so the metrics keep working. For OpenTelemetry
+spans per command:
+
+```go
+import "go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
+
+client, err := mongowrap.Connect(ctx, uri, options.Client().SetMonitor(otelmongo.NewMonitor()))
+```
+
 ## Best Practices
 
 1. **Always use context**: Pass context to control timeouts and cancellations

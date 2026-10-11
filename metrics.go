@@ -180,3 +180,43 @@ func poolMonitor() *event.PoolMonitor {
 		},
 	}
 }
+
+// combineCommandMonitors returns a monitor that calls each of monitors in order.
+func combineCommandMonitors(monitors []*event.CommandMonitor) *event.CommandMonitor {
+	return &event.CommandMonitor{
+		Started: func(ctx context.Context, evt *event.CommandStartedEvent) {
+			for _, m := range monitors {
+				if m.Started != nil {
+					m.Started(ctx, evt)
+				}
+			}
+		},
+		Succeeded: func(ctx context.Context, evt *event.CommandSucceededEvent) {
+			for _, m := range monitors {
+				if m.Succeeded != nil {
+					m.Succeeded(ctx, evt)
+				}
+			}
+		},
+		Failed: func(ctx context.Context, evt *event.CommandFailedEvent) {
+			for _, m := range monitors {
+				if m.Failed != nil {
+					m.Failed(ctx, evt)
+				}
+			}
+		},
+	}
+}
+
+// combinePoolMonitors returns a monitor that calls each of monitors in order.
+func combinePoolMonitors(monitors []*event.PoolMonitor) *event.PoolMonitor {
+	return &event.PoolMonitor{
+		Event: func(evt *event.PoolEvent) {
+			for _, m := range monitors {
+				if m.Event != nil {
+					m.Event(evt)
+				}
+			}
+		},
+	}
+}
